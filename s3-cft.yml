@@ -8,4 +8,4 @@ Resources:
     Properties:
         BucketName: !Ref pS3bktName
         VersioningConfiguration:
-        Status: Enabled
+          Status: Enabled
