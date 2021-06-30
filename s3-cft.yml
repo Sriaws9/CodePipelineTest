@@ -11,3 +11,8 @@ Resources:
         BucketName: !Ref pS3bktName
         VersioningConfiguration:
           Status: Enabled
+        Tags: 
+          - Key: "Env1"
+            Value: "dev"
+          - Key: "CodePipline"
+            Value: "create-s3-pipeline"
