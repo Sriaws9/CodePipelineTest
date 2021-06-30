@@ -3,6 +3,7 @@ Parameters:
     pS3bktName:
         Type: String
         Description: Name of the s3 bucket -dev env
+        Default: s3-bkt-dev-99887
 Resources:
   S3Bucket:
     Type: 'AWS::S3::Bucket'
