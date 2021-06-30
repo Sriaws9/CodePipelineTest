@@ -22,8 +22,9 @@ phases:
       - export BUCKET_NAME=$(cat $S3_CF_TEMPLATE_VALUES | jq .[0] | jq 'split("=")' | jq -r .[1])
       - echo $BUCKET_NAME
       - export EVN=$(cat $S3_CF_TEMPLATE_VALUES | jq .[1] | jq 'split("=")' | jq -r .[1])
+      - echo $EVN
       - |
-        if [[ "$s1" == "QA" ]]
+        if [[ "$EVN" == "QA" ]]
         then
           echo "match"
           CREDENTIALS=$(aws sts assume-role --role-arn arn:aws:iam::$AWS_ACCOUNT_ID:role/$EKS_DEPLOY_IAM_ROLE_ARN --role-session-name deploy-documentum --duration-seconds 3600)
