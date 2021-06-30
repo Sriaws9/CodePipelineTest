@@ -1,0 +1,1 @@
+AWS S3 has been created successfully with the name @BUCKET_NAME@ and the corresponding stack name is  @BUCKET_NAME@-stack 

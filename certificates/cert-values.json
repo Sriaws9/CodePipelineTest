@@ -1,0 +1,5 @@
+[
+    "pStackName=pge-ecm-crm-cert-promalertmdev-dashboards",
+    "pAppName=promalertmdev-dashboards",    
+    "pCertificateSubject=promalertmdev.nonprod.pge.com"  
+]

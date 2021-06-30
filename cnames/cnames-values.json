@@ -1,0 +1,8 @@
+[
+    "pStackName=pge-ecm-crm-promdev-cname-dev-stack",
+    "pAppName=promdev-cname",    
+    "pAlias=promdev.nonprod.pge.com",
+    "pTargetResource=internal-k8s-ecmdashboards-e8aef958f1-1612472492.us-west-2.elb.amazonaws.com",
+    "pCrossAccountServiceTokenARN=arn:aws:sns:us-east-1:514712703977:RequestRoute53CNAME",
+    "pPrivateHostedZoneId=Z1PO7XO596QKJW"
+]

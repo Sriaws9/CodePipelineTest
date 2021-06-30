@@ -1,0 +1,60 @@
+version: 0.2
+phases: 
+  install:
+    commands:          
+   
+      
+      - yum update -y
+      - echo "eksctl install"    
+      - curl -sSL "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp 
+      - mv /tmp/eksctl /usr/local/bin        
+      
+      - echo 'IAM Authenticator'
+      - curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.15.10/2020-02-22/bin/linux/amd64/aws-iam-authenticator
+      - chmod +x ./aws-iam-authenticator
+      - mv aws-iam-authenticator /usr/local/bin/
+      - echo "Installation of pre-requisites complete - End of Install Stage"
+
+  pre_build:
+    commands:
+      - echo "Setting up the environment and profile"
+      - echo 'This must be run first to export all the evn variables'
+      - export $(grep -v '^#' content-server/svc_external.env | xargs)
+      - echo "EKS_NAMESPACE:" $EKS_NAME_SPACE
+      - echo "Export Account ID"
+      - export AWS_ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -f5 -d ':')
+      - echo "Set up credentials"
+      - CREDENTIALS=$(aws sts assume-role --role-arn arn:aws:iam::$AWS_ACCOUNT_ID:role/$EKS_DEPLOY_IAM_ROLE_ARN --role-session-name deploy-documentum --duration-seconds 3600)
+      - export AWS_ACCESS_KEY_ID="$(echo ${CREDENTIALS} | jq -r '.Credentials.AccessKeyId')"
+      - export AWS_SECRET_ACCESS_KEY="$(echo ${CREDENTIALS} | jq -r '.Credentials.SecretAccessKey')"
+      - export AWS_SESSION_TOKEN="$(echo ${CREDENTIALS} | jq -r '.Credentials.SessionToken')"
+      - export AWS_EXPIRATION=$(echo ${CREDENTIALS} | jq -r '.Credentials.Expiration')
+     
+      - echo "verifying the profile"      
+      - aws sts get-caller-identity
+      - echo "update kube config to connect with cluster"
+      - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+      - echo "End of pre-build stage"
+      
+  build:
+    commands:       
+       - cd content-server
+       - envsubst < svc_externalcs.yaml.tmpl > svc_externalcs.yaml
+       - envsubst < svc_externaldbr.yaml.tmpl > svc_externaldbr.yaml
+       - cat svc_externalcs.yaml
+       - cat svc_externaldbr.yaml
+       - kubectl apply -f svc_externalcs.yaml -n $EKS_NAME_SPACE	
+       - kubectl apply -f svc_externaldbr.yaml -n $EKS_NAME_SPACE
+       #
+       - kubectl get pods --namespace $EKS_NAME_SPACE    
+       
+  post_build:
+    commands:
+       - echo "------------------------------------------------"
+       - echo "post build validations"
+       - echo "Verify the deployment"
+       - kubectl get pods --namespace $EKS_NAME_SPACE
+       - kubectl get nodes
+       - kubectl get pods
+       - echo " List all services in the namespace "
+       - kubectl get services

@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CFT for Mount Target Security Group
+
+Parameters:
+
+# Parameters for Mount Target Security Group Creation via SSM Parameter Store
+ 
+  pVPC:
+    Description: SSM Parameter for vpc ID
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /vpc/id
+
+# Parameters for Tagging Mount Target Security Group via SSM Parameter Store
+
+  pAppID:
+    Description: SSM Parameter for AppID
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/appid
+
+  pEnvironment:
+    Description: SSM Parameter for Environment
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/environment
+
+  pOwner:
+    Description: SSM Parameter for Owner
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/owner
+
+  pCompliance:
+    Description: SSM Parameter for Compliance
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/Compliance
+
+  pNotify:
+    Description: SSM Parameter for Notification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/notify
+
+  pDataClassification:
+    Description: SSM Parameter for Data Classification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/DataClassification
+
+  pCRIS:
+    Description: SSM Parameter for CRIS
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/CRIS
+
+
+# Parameters For Mount Target Security Group creation via MTSecGrp_Values.json 
+
+  pEnv:
+    Type: String   
+    Description: Environment for Deployment
+
+Resources:
+
+  rEfsMountTargetDctmSecGrp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group For EFS File System Mount Targets
+      GroupName: !Sub "pge-crm-${pEnv}-efs-dctm-mt-sg"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"
+      # SecurityGroupIngress:
+      #   - FromPort: 2049
+      #     IpProtocol: tcp               
+      #     ToPort: 2049      
+      VpcId: !Ref pVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "pge-crm-${pEnv}-efs-dctm-mt-sg"
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify         
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+
+  rEfsMountTargetLogsSecGrp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group For EFS File System Mount Targets
+      GroupName: !Sub "pge-crm-${pEnv}-efs-logs-mt-sg"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"
+      # SecurityGroupIngress:
+      #   - FromPort: 2049
+      #     IpProtocol: tcp                 
+      #     ToPort: 2049      
+      VpcId: !Ref pVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "pge-crm-${pEnv}-efs-logs-mt-sg"
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify         
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+
+# Storing EFS Mount Target Security ID in SSM Parameter Store
+  rEFSMTSecGrpDctmSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/efs/crm-${pEnv}/mt/dctm/security_group_id" 
+      Type: String
+      Value: !GetAtt rEfsMountTargetDctmSecGrp.GroupId
+      Description: SSM Parameter for EFS Dctr Mount Target Security Group 
+
+  rEFSMTSecGrpLogsSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/efs/crm-${pEnv}/mt/logs/security_group_id" 
+      Type: String
+      Value: !GetAtt rEfsMountTargetLogsSecGrp.GroupId
+      Description: SSM Parameter for EFS Logs Mount Target Security Group 
+  
+
+Outputs:
+  oEFSMTDctrSecGrpID:  
+    Description: The EFS Mount Target Security Group ID
+    Value: !GetAtt rEfsMountTargetDctmSecGrp.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-DctrSecGrpID"
+
+  oEFSMTLogsSecGrpID:  
+    Description: The EFS Mount Target Security Group ID
+    Value: !GetAtt rEfsMountTargetLogsSecGrp.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-LogsSecGrpID"
+
+
+
+
+        
+      

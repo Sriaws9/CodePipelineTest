@@ -1,0 +1,182 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to provision S3 Buckets
+Parameters:
+  pS3BucketName:
+    Type: String
+    Description: Name of S3 Bucket
+    Default: "central"
+
+  pKMSMasterKeyID:
+    Description: Provide the KMS Details
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /KMS/Key/Crmdev/all/Alias/ARN
+
+  # Parameters from SSM Parameter store used for Tagging of AWS Resources:
+
+  pAppID:
+    Description: SSM Parameter for AppID
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/appid
+
+  pEnvironment:
+    Description: SSM Parameter for Environment
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/environment
+
+  pOwner:
+    Description: SSM Parameter for Owner
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/owner
+
+  pCompliance:
+    Description: SSM Parameter for Compliance
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/Compliance
+
+  pNotify:
+    Description: SSM Parameter for Notification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/notify
+
+  pDataClassification:
+    Description: SSM Parameter for Data Classification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/DataClassification
+
+  pCRIS:
+    Description: SSM Parameter for CRIS
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/CRIS
+
+  # Parameter input to enable versioning for the S3 Bucket
+
+  pVersioning:
+    Description: Does versioning needs to be enabled?
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Default: 'false'
+
+Conditions:
+
+# Condition to check if versioning needs to be enabled for the S3 Bucket.
+
+  EnableVersioning: !Equals [!Ref pVersioning, "true"]    
+
+Resources:
+ 
+  # Creates the S3 Logging bucket:        
+  rLoggingBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: LogDeliveryWrite
+      BucketName: !Sub ${pS3BucketName}
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref pKMSMasterKeyID
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        'Fn::If':
+          - EnableVersioning
+          - Status: "Enabled"
+          - !Ref "AWS::NoValue"        
+      LifecycleConfiguration:
+        Rules:
+          - Id: "MoveLogstoIA"
+            Prefix: logs/
+            Status: Enabled
+            Transitions: 
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+          - Id: "DeleteLogsAfter2Years"
+            Prefix: logs/
+            Status: Enabled
+            ExpirationInDays: 730
+      Tags:
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS            
+  
+  # Creates the S3 Logging Bucket Policy:
+  rLoggingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref rLoggingBucket
+      PolicyDocument: 
+        Statement:
+          - Sid: "ObjectLevelAccess"
+            Action: 
+              - "s3:*"
+            Effect: "Allow"
+            Resource: !Sub 'arn:aws:s3:::${pS3BucketName}/*'
+            Principal: 
+              Service: 's3.amazonaws.com'
+
+          - Sid: "LogsFolderAccess"
+            Action: 
+              - "s3:*" 
+            Effect: "Allow"
+            Resource: !Sub 'arn:aws:s3:::${pS3BucketName}/logs/*'
+            Principal: 
+              Service: 's3.amazonaws.com' 
+
+          - Sid: "Deny Non Http Traffic"
+            Action:
+              - 's3:*'
+            Effect: "Deny"
+            Resource: !Sub 'arn:aws:s3:::${pS3BucketName}/*'
+            Principal:
+              AWS: '*'
+            Condition:
+              Bool:
+                aws:SecureTransport: "false" 
+ 
+  rLoggingBucketNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /s3/LoggingBucketName      
+      Value: !Ref rLoggingBucket
+      Type: String      
+      Description: SSM Parameter for S3 Logging Bucket Name
+      Tags:
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment
+        Owner: !Ref pOwner
+        Compliance: !Ref pCompliance
+        Notify: !Ref pNotify
+        DataClassification: !Ref pDataClassification
+        CRIS: !Ref pCRIS 
+
+Outputs:
+    LoggingBucketName:
+      Description: Name of the S3 Logging Bucket
+      Value: !Ref rLoggingBucket
+      Export:
+        Name: !Sub "${AWS::StackName}-Name"
+    LoggingBucketArn:
+      Description: The ARN of S3 Logging Bucket
+      Value: !GetAtt rLoggingBucket.Arn 
+      Export:
+        Name: !Sub "${AWS::StackName}-Arn"    
+    S3StoreBaseUrl:
+      Description: This http endpoint is used for Documentum component
+      Value: !Sub http://s3.amazonaws.com/${rLoggingBucket}

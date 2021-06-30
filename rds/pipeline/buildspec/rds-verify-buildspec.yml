@@ -1,0 +1,27 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - echo 'Nothing to install'
+  pre_build:
+    commands:
+      - echo 'Pre-build activities' 
+      - echo $CF_TEMPLATE_VALUES       
+      - export ENV=$(cat $CF_TEMPLATE_VALUES | jq .[0] | jq 'split("=")' | jq -r .[1]) 
+      - export DB_STACK_NAME=pgecrm-$ENV-db-stack
+  build:
+    commands:  
+    
+      #- export DB_STACK_NAME=pge-rds-db-devnew
+      - export DB_NAME=$(aws cloudformation describe-stacks --stack-name $DB_STACK_NAME | jq ."Stacks" | jq ".[].Outputs" | jq -r .[1].OutputValue)
+      - echo $DB_NAME
+      - export dbhostname=$(aws secretsmanager get-secret-value --secret-id $DB_NAME | jq '.SecretString' | jq -r . | jq -r '.host')
+      - export PGPASSWORD=$(aws secretsmanager get-secret-value --secret-id $DB_NAME | jq '.SecretString' | jq -r . | jq -r '.password')
+      - export dbusername=$(aws secretsmanager get-secret-value --secret-id $DB_NAME | jq '.SecretString' | jq -r . | jq -r '.username')
+      - export dbport=$(aws secretsmanager get-secret-value --secret-id $DB_NAME | jq '.SecretString' | jq -r . | jq -r '.port')
+      - export dbname=$(aws secretsmanager get-secret-value --secret-id $DB_NAME | jq '.SecretString' | jq -r . | jq -r '.dbname')
+      - echo $dbusername
+      - echo $dbname
+      - psql --host=$dbhostname --port=$dbport --username=$dbusername --dbname=$dbname
+      - echo 'Database connection was successfull.'
+

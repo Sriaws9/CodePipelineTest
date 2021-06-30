@@ -1,0 +1,24 @@
+[
+    "pGitHubBranch=main",
+    "pProjectName=pge-crm",
+    "pResourceName=content-server",
+    "pEnv=Dev",    
+    "pApplicationName=ContentServer",
+    "pEKSClusterName=pge-crmcloud-devtst",
+    "pEKSNameSpace=pge-crm-dev-dctm",
+
+    "pNotifyStatusSNSARN=/general/CodePipeline/SNSTopic/Status",
+    "pApprovalSNS=/general/CodePipeline/SNSTopic/Approval",
+    "pPipelineArtifactsBucket=pge-crm-dev-s3-codepipeline-artifacts",
+
+    "pCodeBuildSecruityGroup=/ekscluster/SecurityGroup",
+    "pEKSClusterDeployRole=pge-ecm-crm-dev-eks-cluster-codebuild-role",
+    
+    "pCodeBuildVPC=/vpc/id",
+    "pCodeBuildSubnet01=/vpc/2/privatesubnet1/id",
+    "pCodeBuildSubnet02=/vpc/2/privatesubnet2/id",
+    "pCodeBuildSubnet03=/vpc/2/privatesubnet3/id",
+
+    "pPipelineArtifactsBucket=pge-crm-dev-s3-codepipeline-artifacts",
+    "pBuildSpecFile=content-server/pipeline/buildspecbuildspec.yml"
+  ]

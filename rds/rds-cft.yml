@@ -1,0 +1,330 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'State: RDS Aurora Serverless PostgreSQL'
+Parameters:
+
+  # Env Parameter used for resource naming:
+  pEnv:
+    Description: 'Enter the Environment Name for resource naming'
+    Type: String
+    Default: "dev" 
+
+  # Env Specific Parameter used from SSM Parameter Store:
+
+  pKmsKeyId:
+    Description: Provide the KMS Details
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /KMS/Key/Crmdev/all/Alias/ARN
+    
+  pRDSSecurityGroup:   
+    Description: Provide the RDSSecurityGroup Details
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /aurora/crmdev/SecurityGroup
+
+  # RDS Aurora Specific Parameters:
+
+  pDBBackupRetentionPeriod:  
+    Description: 'The number of days to keep snapshots of the cluster.'
+    Type: String
+    Default: "7"
+    # QA: 30 Days
+    # Prod: 30 Days
+  pEnableDataApi:
+    Description: 'Enable the Data API (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html).'
+    Type: String
+    Default: true
+    # The above option enables the HTTP endpoint for an Aurora Serverless DB Cluster.
+    # The HTTP endpoint provides a connectionless WebService API for running SQL Queries on Aurors Serverless CLuster.
+    # It also helps to query your database from inside the RDS Console with the query.
+    # Check the data api enable/disable option for querying the database
+  pAutoPause:
+    Description: 'Enable automatic pause for a Serverless Aurora cluster. A cluster can be paused only when it has no connections. If a cluster is paused for more than seven days, the cluster might be backed up with a snapshot. In this case, the cluster is restored when there is a request to connect to it.'
+    Type: String
+    Default: true
+  pMinCapacity:
+    Description: 'The minimum capacity units for a Serverless Aurora cluster.'
+    Type: String
+    Default: 8
+  pMaxCapacity:
+    Description: 'The maximum capacity units for a Serverless Aurora cluster.'
+    Type: String    
+    Default: 64
+    #QA: 8 and 384
+    #Prod: 8 and 384
+  pSecondsUntilAutoPause:
+    Description: 'The time, in seconds, before a Serverless Aurora cluster is paused.'
+    Type: String
+    Default: 300
+  pEngineVersion:
+    Description: 'Aurora Serverless PostgreSQL version.'
+    Type: String
+    Default: 10.12
+
+# Parameters from SSM Parameter store used for Tagging of AWS Resources:   
+  pEnvironment:
+    Description: 'SSM Parameter for Environmeent'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/environment"
+  pAppID:
+    Description: 'Enter the Application ID'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/appid"
+  pOwner:
+    Description: 'Enter the Owner Details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/owner"
+  pCompliance:
+    Description: 'Enter the Compliance'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/Compliance"
+  pNotify:
+    Description: 'Enter the Notification E-Mail Id'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/notify"
+  pDataClassification:
+    Description: 'Enter the Data Classification details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /general/DataClassification  
+  pCRIS:
+    Description: 'Enter the CRIS details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/CRIS"
+ 
+# SSM Parameters of shared AWS Resources used in the template:
+
+  pRDSPrivateSubnetIDinAZ1:
+    Description: Provide the RDS Private Subnet ID In Availability Zone 1     
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /vpc/2/privatesubnet1/id 
+  pRDSPrivateSubnetIDinAZ2:
+    Description: Provide the RDS Private Subnet ID In Availability Zone 2     
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /vpc/2/privatesubnet2/id
+  pRDSPrivateSubnetIDinAZ3:
+    Description: Provide the RDS Private Subnet ID In Availability Zone 3     
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /vpc/2/privatesubnet3/id                       
+
+
+Resources:
+# The Resource Blocks will create the AWS Resources on the execution of the template:
+
+# Creates the RDS Secrets Manager User:  
+  rSecretRDSUser:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub pgecrm${pEnv}db
+      Description: 'This is the secret for rdsuser'
+      GenerateSecretString:      
+        # Username must be a maximum of 16  alphanumeric characters. 
+        # Username: devdbadmin
+        SecretStringTemplate: !Join [ '', [ '{"username": "', !Ref pEnv, 'dbadmin"}' ] ]         
+        GenerateStringKey: 'password'
+        # Password Length can be maximum of 42 characters.
+        PasswordLength: 20
+        #ExcludeCharacters: '"@/\._-@#$'
+        ExcludePunctuation: true
+      KmsKeyId: !Ref pKmsKeyId
+      Tags:
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS  
+ 
+# Attaches the RDS Secrets Manager User to the RDS Database.  
+  rSecretRDSAttachment:
+    Type: "AWS::SecretsManager::SecretTargetAttachment"
+    Properties:
+      SecretId: !Ref rSecretRDSUser
+      TargetType: AWS::RDS::DBCluster
+      TargetId: !Ref rDBCluster 
+
+# Secret Key Rotation is not used for Dev Environment
+# RotationScheduleRdsUser:            
+#    Type: "AWS::SecretsManager::RotationSchedule"
+#    Properties:
+#        SecretId: !Ref SecretRDSUser
+#        RotationRules:
+#            AutomaticallyAfterDays: 90
+
+
+# Creates the RDS DB Cluster Parameter Group:
+  rDBClusterParameterGroup:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: "AuroraDB Cluster Parameter group"      
+      Family: aurora-postgresql10
+      Parameters:
+        client_encoding: 'UTF8'
+        rds.force_ssl: 1
+# The above "rds.force_ssl" parameter is set to 1 (on) to force connections to use SSL.
+# This will force all connections to DB instance to use SSL. It happens transparently to the client, and the client doesn't have to do any work to use SSL.
+      Tags:
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS  
+
+
+# Creates the RDS DBSubnet Group:
+  rDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Aurora Serverless DB Subnet Group
+      DBSubnetGroupName: !Sub pgecrm${pEnv}dbsbntgrp
+      SubnetIds: 
+        - !Ref pRDSPrivateSubnetIDinAZ1
+        - !Ref pRDSPrivateSubnetIDinAZ2
+        - !Ref pRDSPrivateSubnetIDinAZ3        
+      Tags:
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+
+# Creates the DB Cluster: 
+# The BackupWindow and Maintenance Window is not supported for Aurora Serverless.
+  rDBCluster:
+    DeletionPolicy: Snapshot 
+    UpdateReplacePolicy: Snapshot
+    Type: 'AWS::RDS::DBCluster'   
+    Properties:      
+      BackupRetentionPeriod: !Ref pDBBackupRetentionPeriod
+      DatabaseName: !Sub pgecrm${pEnv}db
+      DBClusterParameterGroupName: !Ref rDBClusterParameterGroup
+      DBClusterIdentifier: !Sub pgecrm${pEnv}db
+      DBSubnetGroupName: !Ref rDBSubnetGroup
+      EnableHttpEndpoint: !Ref pEnableDataApi      
+      Engine: aurora-postgresql
+      EngineMode: serverless
+      EngineVersion: !Ref pEngineVersion    
+      KmsKeyId: !Ref pKmsKeyId
+      MasterUsername: !Sub '{{resolve:secretsmanager:${rSecretRDSUser}::username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${rSecretRDSUser}::password}}' 
+      ScalingConfiguration:
+        AutoPause: !Ref pAutoPause
+        MaxCapacity: !Ref pMaxCapacity
+        MinCapacity: !Ref pMinCapacity
+        SecondsUntilAutoPause: !Ref pSecondsUntilAutoPause      
+      StorageEncrypted: true
+      VpcSecurityGroupIds:
+      - !Ref pRDSSecurityGroup
+      Tags:
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+
+# Stores the Db Endpoint Address /RDS DNS Name in the AWS SSM Parameter Store:
+
+  rRDSEndpointParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /aurora/crm${pEnv}/DBEndpointAddress
+      Type: String
+      Value: !GetAtt rDBCluster.Endpoint.Address
+      Description: SSM Parameter for RDS DB Endpoint Address
+      Tags:
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment
+        Owner: !Ref pOwner
+        Compliance: !Ref pCompliance
+        Notify: !Ref pNotify
+        DataClassification: !Ref pDataClassification
+        CRIS: !Ref pCRIS
+       
+
+
+# Store the Db Cluster Name in the AWS SSM Parameter Store:
+
+  rRDSClusterNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /aurora/crm${pEnv}/ClusterName
+      Type: String
+      Value: !Ref rDBCluster
+      Description: SSM Parameter for RDS DB Cluster Name
+      Tags:
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment
+        Owner: !Ref pOwner
+        Compliance: !Ref pCompliance
+        Notify: !Ref pNotify
+        DataClassification: !Ref pDataClassification
+        CRIS: !Ref pCRIS
+           
+
+# Store the Db Subnet Group Name in the AWS SSM Parameter Store:
+
+  rRDSDBSubnetGroupNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /aurora/crm${pEnv}/DBSubnetGroup
+      Type: String
+      Value: !Ref rDBSubnetGroup
+      Description: SSM Parameter for RDS DB SubnetGroup Name
+      Tags:
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment
+        Owner: !Ref pOwner
+        Compliance: !Ref pCompliance
+        Notify: !Ref pNotify
+        DataClassification: !Ref pDataClassification
+        CRIS: !Ref pCRIS
+        
+          
+Outputs:
+  RDSEndpoint:
+    Description: The conection Endpoint/DNS Name of the Db Cluster 
+    Value: !GetAtt rDBCluster.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-DNSName'
+  ClusterName:
+    Description: The name of the Db Cluster 
+    Value: !Ref rDBCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterName'
+  DBSubnetGroupName:
+    Description: The name of the Db Subnet Group 
+    Value: !Ref rDBSubnetGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-DBSubnetGroupName'

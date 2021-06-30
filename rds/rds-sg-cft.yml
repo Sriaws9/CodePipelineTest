@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates the RDS Aurora Serverless Security Group'
+Parameters:
+  pEnv:
+    Description: 'Enter the Environment Name for resource naming'
+    Type: String
+    Default: "dev"  
+  pEnvironment:
+    Description: 'Enter the Environment Name'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/environment"
+  pAppID:
+    Description: 'Enter the Application ID'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/appid"
+  pOwner:
+    Description: 'Enter the Owner Details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/owner"
+  pCompliance:
+    Description: 'Enter the Compliance'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/Compliance"
+  pNotify:
+    Description: 'Enter the Notification E-Mail Id'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/notify"
+  pDataClassification:
+    Description: 'Enter the Data Classification details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/DataClassification"
+  pCRIS:
+    Description: 'Enter the CRIS details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/CRIS"                
+  pVPCID:
+    Description: Provide the VPC Details
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/vpc/id"
+  pCodeBuildSecurityGroup:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /CodeBuild/aurora/SecurityGroup
+Resources:
+
+# To Create the RDS Cluster Security Group
+#  RDS Cluster Security Group is configured to allow only Inbound connection on port 3306.
+  rRDSSecurityGroup:    
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to RDS Aurora Serverless
+      GroupName: !Sub pgecrm${pEnv}db-sg
+      VpcId: !Ref pVPCID
+      # Allow Outbound All traffic 0.0.0.0/0        
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0          
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        SourceSecurityGroupId: !Ref pCodeBuildSecurityGroup 
+      Tags:
+        - Key: Name
+          Value: !Sub pgecrm${pEnv}db-sg  
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+
+# Create Key Security Group ID Parameter in the AWS SSM Parameter Store
+
+  rRDSSecurityGroupParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /aurora/crm${pEnv}/SecurityGroup
+      Type: String    
+      Value: !Ref rRDSSecurityGroup
+      Description: SSM Parameter for RDS Security Group
+      Tags:
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment
+        Owner: !Ref pOwner
+        Compliance: !Ref pCompliance
+        Notify: !Ref pNotify
+        DataClassification: !Ref pDataClassification
+        CRIS: !Ref pCRIS
+Outputs:
+  RDSSecurityGroupID:
+    Description: RDS Security Group
+    Value: !Ref rRDSSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityGroup-ID'

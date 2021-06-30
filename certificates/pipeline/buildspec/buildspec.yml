@@ -1,0 +1,39 @@
+version: 0.2
+env:
+  variables:
+    CF_TAGS_FILE_PATH: ./tags.json
+phases:
+  install:
+    commands:
+      #Install the cfn-lint plugin
+      - pip install cfn-lint
+  pre_build:
+    commands:
+      - echo "pre build"
+      - cfn-lint $CERT_CF_TEMPLATE      
+     
+  build:
+    commands:
+       - echo "build stage"
+       - ls -lrth
+       - echo $CERT_CF_TEMPLATE
+       - echo $CERT_CF_TEMPLATE_VALUES
+       - export CERTIFICATE_NAME=$(cat $CERT_CF_TEMPLATE_VALUES | jq .[0] | jq 'split("=")' | jq -r .[1])
+       - echo $CERTIFICATE_NAME
+        
+         #Add the dev to the CERTIFICATE_NAME
+        
+       #- chmod 775 scripts/create_update_stack.sh
+       #Update the CERTIFICATE_NAME with env
+       - aws cloudformation deploy --stack-name  ${CERTIFICATE_NAME}-stack --template-file $CERT_CF_TEMPLATE --parameter-overrides file://$CERT_CF_TEMPLATE_VALUES --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --tags file://$CF_TAGS_FILE_PATH   
+       #- ./scripts/create_update_stack.sh ${BUCKET_NAME}-Stack $S3_CF_TEMPLATE $S3_CF_TEMPLATE_VALUES
+    
+  post_build:
+    commands:
+       - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
+       - echo "post_build" 
+       # Verify the resource created    
+       - sed -i "s/@CERTIFICATE_NAME@/$CERTIFICATE_NAME/g" $SNS_MESSAGE    
+       - cat $SNS_MESSAGE
+       - aws sns publish --topic-arn $SNS_TOPIC__ARN_NOTIFY_STATUS --subject  "AWS CERTIFICATE Create/Update Status" --message file://$SNS_MESSAGE   
+

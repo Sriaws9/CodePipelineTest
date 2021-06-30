@@ -1,0 +1,11 @@
+[
+    "pGitHubBranch=main",
+    "pCnameTemplatePath=cnames/aws-cfn-private-cname.yml",
+    "pCnameValuesPath=cnames/cnames-values.json",
+    "pProjectName=pge-crm",
+    "pResourceName=cnames",
+    "pBuildSpecFile=cnames/pipeline/buildspec/buildspec.yml",
+    "pNotifyStatusSNSARN=/general/CodePipeline/SNSTopic/Status",
+    "pApprovalSNS=/general/CodePipeline/SNSTopic/Approval",
+    "pPipelineArtifactsBucket=pge-crm-dev-s3-codepipeline-artifacts"
+  ]

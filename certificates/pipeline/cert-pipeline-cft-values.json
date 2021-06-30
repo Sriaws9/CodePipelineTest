@@ -1,0 +1,11 @@
+[
+    "pGitHubBranch=main",
+    "pCertTemplatePath=certificates/aws-cfn-certificate-shared.yml",
+    "pCertValuesPath=certificates/cert-values.json",
+    "pProjectName=pge-crm",
+    "pResourceName=certificate",
+    "pBuildSpecFile=certificates/pipeline/buildspec/buildspec.yml",
+    "pNotifyStatusSNSARN=/general/CodePipeline/SNSTopic/Status",
+    "pApprovalSNS=/general/CodePipeline/SNSTopic/Approval",
+    "pPipelineArtifactsBucket=pge-crm-dev-s3-codepipeline-artifacts"
+  ]

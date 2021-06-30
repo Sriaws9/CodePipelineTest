@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: SSM Parameters for KMS Key Creation
+
+Parameters:
+
+  pParamName: 
+    Type: String    
+    Description: Name of Parameter in Parameter Store
+
+ 
+  pParamValue:
+    Type: String
+    Description: Value of Parameter in Parameter Store
+
+Resources:
+  rSSMParameterEnvironment:
+    Type: AWS::SSM::Parameter       
+    Properties:
+      Name: !Ref pParamName    
+      Type: String
+      Value: !Ref pParamValue
+      Description: General SSM Parameter Creation

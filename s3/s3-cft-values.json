@@ -1,0 +1,7 @@
+ [
+   "pS3BucketName=pge-crm-s3-dctm-dev", 
+   "pAWSEnv=dev", 
+   "pVersioning=false",     
+   "pKMSMasterKeyID=/KMS/Key/Crmdev/all/Alias/ARN" 
+  ]
+

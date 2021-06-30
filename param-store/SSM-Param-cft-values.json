@@ -1,0 +1,15 @@
+{
+    "StackName": "sampleParmas",
+    "Parameters": [{
+      "pParamName": "/KMS/Key/CrmDev/AdminUserRoleTest1",            
+      "pParamValue": "arn:aws:iam::138871512076:role/ECM_Ops1",
+      "pParamDesc": "Description of the parameter1"
+      
+    },
+    {
+      "pParamName": "/KMS/Key/CrmDev/AdminUserRoleTest2",            
+      "pParamValue": "arn:aws:iam::138871512076:role/ECM_Ops2",
+      "pParamDesc": "Description of the parameter2"
+      
+    }]
+  }

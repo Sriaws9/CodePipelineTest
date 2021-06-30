@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: SSM Parameters for PGE CRM DEV General Tags
+
+Resources:
+
+  rSSMParameterEnvironment:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /general/environment 
+      Type: String
+      Value: "DEV"
+      Description: SSM Parameter for Environment Tagging
+
+  rSSMParameterAppId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /general/appid 
+      Type: String
+      Value: "APP-2481"
+      Description: SSM Parameter for AppID Tagging
+
+  rSSMOwner:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /general/owner
+      Type: String
+      Value: "D2DR_AXJL_A2AZ"
+      Description: SSM Parameter for Owner Tagging
+  
+  rSSMNotify:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /general/notify
+      Type: String
+      Value: "a2az@pge.com"
+      Description: SSM Parameter for Notification Tagging
+
+
+  rSSMCompliance:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /general/Compliance
+      Type: String
+      Value: "NA"
+      Description: SSM Parameter for Compliance Tagging
+    
+  rSSMDataClassification:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /general/DataClassification
+      Type: String
+      Value: "Internal"
+      Description: SSM Parameter for DataClassification Tagging
+ 
+  rSSMCRIS:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /general/CRIS
+      Type: String
+      Value: "Low"
+      Description: SSM Parameter for CRIS Tagging 

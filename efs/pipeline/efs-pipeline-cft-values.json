@@ -1,0 +1,11 @@
+[  
+  "pGitHubBranch=main", 
+  "pResourceName=efs", 
+  "pEfsTemplatePath=efs/efs-cft.yml",       
+  "pEfsValuesPath=efs/efs-cft-values.json",    
+  "pSecGroupTemplatePath=efs/efs-sg-cft.yml", 
+  "pSecGroupValuesPath=efs/efs-sg-cft-values.json",       
+  "pBuildSpecFile=efs/pipeline/buildspec/efs-buildspec.yml",
+  "pEncryptionKeyArn=/KMS/Key/Crmdev/all/ARN",
+  "pPipelineArtifactsBucket=pge-crm-dev-s3-codepipeline-artifacts"  
+]

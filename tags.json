@@ -1,0 +1,10 @@
+[
+  "AppID=APP-2481", 
+  "Compliance=CPUC_FERC",
+  "DRTier=N/A",
+  "Org=Information Technology",
+  "Notify=High",
+  "CRIS=true",
+  "DataClassification=Internal",
+  "Environment=DEV"  
+]

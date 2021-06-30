@@ -1,0 +1,186 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to provision S3 Buckets
+Parameters:
+  pS3BucketName:
+    Type: String
+    Description: Name of S3 Bucket
+
+  pLoggingBucket:
+    Description: Provide the Logging Bucket Name
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /s3/LoggingBucketName
+
+  pKMSMasterKeyID:
+    Description: Provide the KMS Details
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /KMS/Key/Crmdev/all/Alias/ARN
+
+  pAppID:
+    Description: SSM Parameter for AppID
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/appid
+
+  # Parameters from SSM Parameter store used for Tagging of AWS Resources:
+
+  pEnvironment:
+    Description: SSM Parameter for Environment
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/environment
+
+  pOwner:
+    Description: SSM Parameter for Owner
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/owner
+
+  pCompliance:
+    Description: SSM Parameter for Compliance
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/Compliance
+
+  pNotify:
+    Description: SSM Parameter for Notification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/notify
+
+  pDataClassification:
+    Description: SSM Parameter for Data Classification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/DataClassification
+
+  pCRIS:
+    Description: SSM Parameter for CRIS
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/CRIS
+
+  # Parameter input to enable versioning for the S3 Bucket
+
+  pVersioning:
+    Description: Does versioning needs to be enabled?
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Default: 'false'
+
+Conditions:
+
+# Condition to check if versioning needs to be enabled for the S3 Bucket.
+
+  EnableVersioning: !Equals [!Ref pVersioning, "true"]
+
+Resources:
+
+# Creates the Resource S3 Bucket:
+  rS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref pS3BucketName
+      AccessControl: Private
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+                SSEAlgorithm: aws:kms
+                KMSMasterKeyID: !Ref pKMSMasterKeyID
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        'Fn::If':
+          - EnableVersioning
+          - Status: "Enabled"
+          - !Ref "AWS::NoValue" 
+      LoggingConfiguration:
+        DestinationBucketName: !Ref pLoggingBucket
+        # Log File prefix can come as an input parameter since for each application it can be seperate
+        #LogFilePrefix: logs/
+        LogFilePrefix: !Sub ${pS3BucketName}/
+      Tags:
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+
+# Creates the S3 Bucket Policy:
+  rS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref rS3Bucket
+      PolicyDocument: 
+        Statement:
+          - Sid: "BucketLevelAccess"
+            Action:
+              - s3:GetAccelerateConfiguration
+              - s3:GetBucketLocation
+              - s3:GetBucketVersioning
+              - s3:GetBucketTagging
+              - s3:ListBucket
+              - s3:ListBucketVersions
+              - s3:ListBucketMultipartUploads            
+            Effect: "Allow"
+            Resource: !Sub 'arn:aws:s3:::${pS3BucketName}'
+            Principal:
+              AWS:
+              - !Sub arn:aws:iam::${AWS::AccountId}:root
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/ECM_Ops
+          - Sid: "ObjectLevelAccess"
+            Action:
+              - s3:AbortMultipartUpload
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+              - s3:GetObject
+              - s3:GetObjectAcl
+              - s3:GetObjectVersion
+              - s3:ListMultipartUploadParts
+              - s3:PutObject
+              - s3:PutObjectAcl              
+            Effect: "Allow"
+            Resource: !Sub 'arn:aws:s3:::${pS3BucketName}/*'
+            Principal:
+              AWS:            
+              - !Sub arn:aws:iam::${AWS::AccountId}:root
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/ECM_Ops
+
+          - Sid: "Deny Non Http Traffic"
+            Action:
+              - 's3:*'
+            Effect: "Deny"
+            Resource: !Sub 'arn:aws:s3:::${pS3BucketName}/*'
+            Principal:
+              AWS: '*'
+            Condition:
+              Bool:
+                aws:SecureTransport: "false" 
+ 
+Outputs:
+  S3BucketName:
+    Description: Name of the S3 Bucket
+    Value: !Ref rS3Bucket
+    Export:
+      Name: !Sub "${AWS::StackName}-Name"
+  S3BucketArn:
+    Description: The ARN of S3 Bucket
+    Value: !GetAtt rS3Bucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Arn"    
+  S3BucketURL:
+    Description: The Website URL of the S3 Bucket
+    Value: !GetAtt rS3Bucket.WebsiteURL
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketUrl"      
+  S3StoreBaseUrl:
+    Description: This http endpoint is used for Documentum component
+    Value: !Sub http://s3.amazonaws.com/${rS3Bucket}
+

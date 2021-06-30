@@ -1,0 +1,1 @@
+AWS Aurora PosgresSQL cluster has been created successfully with the name @RDS_NAME@ and the corresponding stack name is  @RDS_NAME@-stack 

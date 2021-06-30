@@ -1,0 +1,323 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  pProjectName:
+    Type: String
+    Description: The name of the project being built.  This name will be used on a number of resources.
+    Default: pge-crm
+  pResourceName:
+    Type: String
+    Description: The name of the resource being created
+    Default: efs 
+  pGitHubOwner:
+    Type: String
+    Default: pgetech
+    AllowedPattern: 'pgetech'
+  pGitHubRepo:
+    Type: String
+    Default: pge-crm-ecm-cloud-infra-ci
+  pPipelineArtifactsBucket:
+    Type: String
+    Description: The name of s3 bucket which store the artifacts.
+    Default: "pPipelineArtifactsBucket"
+  pNotifyStatusSNSARN:
+    Description: SSM Parameter for Notification
+    Type : AWS::SSM::Parameter::Value<String>
+    Default: /general/CodePipeline/SNSTopic/Status
+  pApprovalSNS:
+    Description: SSM Parameter for Notification
+    Type : AWS::SSM::Parameter::Value<String>
+    Default: /general/CodePipeline/SNSTopic/Approval
+  pEncryptionKeyArn:
+    Description: KMS key
+    Type : AWS::SSM::Parameter::Value<String>
+    Default: /KMS/Key/Crmdev/all/ARN   
+  pGitHubBranch:
+    Type: String   
+  pEfsTemplatePath:
+    Type: String
+  pSecGroupTemplatePath:
+    Type: String
+  pEfsSgValuesPath:
+    Type: String
+  pEfsValuesPath:
+    Type: String
+  pBuildSpecFile:
+    Type: String  
+  pEnvironment:
+    Description: 'SSM Parameter for Environmeent'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/environment"  
+  pAppID:
+    Description: 'Enter the Application ID'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/appid"
+  pOwner:
+    Description: 'Enter the Owner Details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/owner"
+  pCompliance:
+    Description: 'Enter the Compliance'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/Compliance"
+  pNotify:
+    Description: 'Enter the Notification E-Mail Id'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/notify"
+  pDataClassification:
+    Description: 'Enter the Data Classification details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/DataClassification"
+  pCRIS:
+    Description: 'Enter the CRIS details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/CRIS"
+  
+Resources:  
+  rCodeBuildRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 'pge-crm-efs-codepipeline-codebuild-role'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: 'sts:AssumeRole'
+  rCodeBuildPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "pge-crm-efs-codepipeline-codebuild-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogGroups
+            - logs:FilterLogEvents
+            - logs:DescribeLogStreams
+            - logs:DeleteLogGroup
+            - s3:putObject
+            - s3:getObject
+            - codebuild:*
+            - elasticfilesystem:*
+            - s3:*
+            - ssm:*
+            - sns:*
+            - kms:*
+            - cloudformation:*
+            - ec2:*
+            - secretsmanager:*
+          Resource: "*"
+      Roles:
+        -  !Ref rCodeBuildRole
+
+  rCodePipelineRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: "pge-crm-efs-codepipeline-role"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: 'sts:AssumeRole'
+  rCodePipelinePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "pge-crm-efs-codepipeline-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+            - Effect: Allow
+              Action:
+                - s3:putObject
+                - s3:getObject
+                - codebuild:StartBuild
+                - codebuild:BatchGetBuilds
+                - codestar-connections:UseConnection
+                - cloudformation:*
+                - s3:*
+                - elasticfilesystem:*
+                - ssm:*
+                - sns:*
+                - kms:*
+                - elasticfilesystem:*
+                - cloudformation:*
+                - ec2:*
+                - secretsmanager:*
+                - codestar:*
+              Resource:
+                 - "*"
+            - Effect: Allow
+              Action:
+                - cloudformation:CreateStack
+                - cloudformation:DescribeStacks
+                - cloudformation:DeleteStack
+                - cloudformation:UpdateStack
+                - cloudformation:CreateChangeSet
+                - cloudformation:ExecuteChangeSet
+                - cloudformation:DeleteChangeSet
+                - cloudformation:DescribeChangeSet
+                - cloudformation:ValidateTemplate
+              Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${pProjectName}/*"
+            - Effect: Allow
+              Action:
+                - iam:PassRole
+              Resource: !GetAtt rCodePipelineRole.Arn
+      Roles:
+        -  !Ref rCodePipelineRole 
+  rCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${pProjectName}-dev-${pResourceName}-codebuild-project
+      ServiceRole: !Ref rCodeBuildRole
+      EncryptionKey: !Ref pEncryptionKeyArn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Ref pBuildSpecFile
+      Environment:
+        Type: LINUX_CONTAINER
+        # ComputeType options: BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM, BUILD_GENERAL1_LARGE
+        ComputeType: BUILD_GENERAL1_SMALL
+        # Run `aws codebuild list-curated-environment-images` for a complete list of images provided.
+        Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+        EnvironmentVariables:
+        - Name: EFS_CF_TEMPLATE
+          Type: PLAINTEXT
+          Value: !Ref pEfsTemplatePath       
+        - Name: EFS_CF_TEMPLATE_VALUES
+          Type: PLAINTEXT
+          Value: !Ref pEfsValuesPath           
+        - Name: SNS_TOPIC__ARN_NOTIFY_STATUS
+          Type: PLAINTEXT
+          Value: !Ref pNotifyStatusSNSARN
+        - Name: SNS_MESSAGE
+          Type: PLAINTEXT
+          Value: efs/pipeline/sns-message.txt         
+        - Name: EFS_CF_SG_TEMPLATE 
+          Type: PLAINTEXT
+          Value: !Ref pSecGroupTemplatePath
+        - Name: EFS_SG_CF_TEMPLATE_VALUES
+          Type: PLAINTEXT
+          Value: !Ref pEfsSgValuesPath
+        - Name: CF_TAGS_FILE_PATH
+          Type: PLAINTEXT
+          Value: tags.json                                       
+      Artifacts:
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS 
+        
+  rCodePipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !Ref pPipelineArtifactsBucket
+        EncryptionKey: 
+          Id:  !Ref pEncryptionKeyArn
+          Type: KMS
+      RestartExecutionOnUpdate: true
+      Name: !Sub '${pProjectName}-dev-${pResourceName}-CodePipeline'
+      RoleArn: !Join [ "", ["arn:aws:iam::", !Ref "AWS::AccountId", ":role/", !Ref rCodePipelineRole  ] ]
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              InputArtifacts: []
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: '1'
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                Owner: !Ref pGitHubOwner
+                Repo: !Ref pGitHubRepo
+                Branch: !Ref pGitHubBranch
+                PollForSourceChanges: false
+                OAuthToken: '{{resolve:secretsmanager:drc/github/accesskey:SecretString:github-accesskey}}'
+              Namespace: SourceVariables
+              RunOrder: 1
+        # Stage 2:  Build using Serverless Framework
+        
+        - Name: !Sub Create-${pResourceName}
+          Actions:
+            - Name: ApprovalForProvisioning
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: '1'
+                Provider: Manual
+              Configuration:           
+                NotificationArn: !Ref pApprovalSNS
+                #https://github.com/pgetech/pge-crm-ecm-cloud-infra-ci/commit/f0b90df19cb38fcc4a672787f28b3ec7b0dcb358
+                ExternalEntityLink: !Join [ "/", ["https://github.com", !Ref pGitHubOwner, !Ref pGitHubRepo, "commit", "#{SourceVariables.CommitId}"]]
+                CustomData: "The EFS pipeline would have these changes been deployed #{SourceVariables.CommitMessage}"
+              RunOrder: 1         
+            - Name: !Sub 'Provision-EFS'
+              RunOrder: 2
+              InputArtifacts:
+                - Name: SourceCode
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName:  !Ref rCodeBuild
+              OutputArtifacts:
+                - Name: BuildArtifact
+        
+                        
+  rCodeStarNotification:
+    Type: 'AWS::CodeStarNotifications::NotificationRule'
+    Properties:
+      Name: !Sub '${pProjectName}-${pResourceName}-CodeStarNotification'
+      DetailType: FULL
+      Resource: !Join [ "", ["arn:aws:codepipeline:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":", !Sub '${pProjectName}-dev-${pResourceName}-CodePipeline']]
+      EventTypeIds: 
+        - codepipeline-pipeline-action-execution-failed
+        - codepipeline-pipeline-pipeline-execution-failed  
+      Targets: 
+        - TargetType: SNS 
+          TargetAddress: !Ref pNotifyStatusSNSARN
+      Tags: 
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment 
+  rGithubWebhookDocumentumcft:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      RegisterWithThirdParty: true
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration:
+        SecretToken: '{{resolve:secretsmanager:drc/github/accesskey:SecretString:github-accesskey}}'
+      Filters:
+      - JsonPath: "$.ref"
+        MatchEquals: "refs/heads/main"
+      - JsonPath: "$.commits[*].*[?(@ == 'efs/efs-cft-values.json')]"  
+        MatchEquals: efs/efs-cft-values.json
+      TargetPipeline: !Ref rCodePipeline
+      TargetAction: Source
+      TargetPipelineVersion: !GetAtt rCodePipeline.Version
+ 

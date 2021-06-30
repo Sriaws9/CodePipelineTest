@@ -1,0 +1,1 @@
+AWS EFS has been created successfully and the following system id is @EFS_FileSystem_ID@ 

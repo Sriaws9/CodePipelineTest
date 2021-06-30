@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  pEmail:
+    Type: String
+    Description: Enter the mail id for the subscription   
+  pTopicName:
+    Type: String
+    Default: approval
+    AllowedValues:
+    - approval
+    - status
+    Description: Enter the Name of the topic
+  pEnvironment:
+    Description: 'SSM Parameter for Environmeent'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/environment"
+  pAppID:
+    Description: 'Enter the Application ID'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/appid"
+  pOwner:
+    Description: 'Enter the Owner Details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/owner"
+  pCompliance:
+    Description: 'Enter the Compliance'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/Compliance"
+  pNotify:
+    Description: 'Enter the Notification E-Mail Id'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/notify"
+  pDataClassification:
+    Description: 'Enter the Data Classification details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/DataClassification"
+  pCRIS:
+    Description: 'Enter the CRIS details'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/general/CRIS"
+Conditions:
+    ApproveTopic: !Equals [ !Ref pTopicName, approval]
+    StatusTopic: !Equals [ !Ref pTopicName, status]        
+Resources:                
+  rMySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub pge-crm-codepipeline-${pTopicName}
+      Subscription:
+      - Endpoint: !Ref pEmail
+        Protocol: email      
+      TopicName: !Sub pge-crm-codepipeline-${pTopicName}
+      Tags:
+          - Key: AppID
+            Value: !Ref pAppID
+          - Key: Environment
+            Value: !Ref pEnvironment
+          - Key: Owner
+            Value: !Ref pOwner
+          - Key: Compliance
+            Value: !Ref pCompliance
+          - Key: Notify
+            Value: !Ref pNotify
+          - Key: DataClassification
+            Value: !Ref pDataClassification
+          - Key: CRIS
+            Value: !Ref pCRIS
+          
+  rSNSTopicApproveParameter:
+    Type: AWS::SSM::Parameter
+    Condition: ApproveTopic
+    Properties:
+      Name: /general/CodePipeline/SNSTopic/Approval
+      Type: String
+      Value: !Ref rMySNSTopic
+      Description: SSM Parameter for SNS Topic Name
+      Tags:
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment
+        Owner: !Ref pOwner
+        Compliance: !Ref pCompliance
+        Notify: !Ref pNotify
+        DataClassification: !Ref pDataClassification
+        CRIS: !Ref pCRIS
+  rSNSTopicStatusParameter:
+    Type: AWS::SSM::Parameter
+    Condition: StatusTopic
+    Properties:
+      Name: /general/CodePipeline/SNSTopic/Status
+      Type: String
+      Value: !Ref rMySNSTopic
+      Description: SSM Parameter for SNS Topic Name
+      Tags:
+        AppID: !Ref pAppID
+        Environment: !Ref pEnvironment
+        Owner: !Ref pOwner
+        Compliance: !Ref pCompliance
+        Notify: !Ref pNotify
+        DataClassification: !Ref pDataClassification
+        CRIS: !Ref pCRIS  
+Outputs:
+  SNSTopicName:
+    Description: Name of the SNS Topic
+    Value: !Ref rMySNSTopic

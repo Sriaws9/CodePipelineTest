@@ -1,0 +1,1 @@
+AWS Certificate has been created successfully with the name @CERTIFICATE_NAME@ and the corresponding stack name is  @CERTIFICATE_NAME@-stack 

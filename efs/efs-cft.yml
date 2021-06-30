@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CFT for Elastic File System and Mount Target 
+
+Parameters:
+
+# Parameters for File System Resource Tagging via SSM Parameters
+
+  pAppID:
+    Description: SSM Parameter for AppID
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/appid
+
+  pEnvironment:
+    Description: SSM Parameter for Environment 
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/environment
+
+  pOwner:
+    Description: SSM Parameter for Owner
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/owner
+
+  pCompliance:
+    Description: SSM Parameter for Compliance
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/Compliance
+
+  pNotify:
+    Description: SSM Parameter for Notification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/notify
+
+  pDataClassification:
+    Description: SSM Parameter for Data Classification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/DataClassification
+
+  pCRIS:
+    Description: SSM Parameter for CRIS
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/CRIS
+
+# Parameters For Filesystem Resource creation via SSM Parameter
+
+  pKMS:
+    Description: SSM Parameter for KMS Key
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /KMS/Key/Crmdev/all/Alias/ARN
+
+
+# Parameters For Filesystem Resource creation via EFS_Values.json
+
+  pEnv:
+    Type: String
+    Default: "dev"
+    Description: Environment for Dev
+
+  pLifeCyclePolicy:
+    Type: String
+    Default: AFTER_14_DAYS
+    Description: Lifecycle Policy for File System Resource
+
+  pEFSType:
+    Type: String
+    Description: EFS is provisioned for component - dctm/logs
+    AllowedValues:
+      - "dctm"
+      - "logs"
+    Default: "dctm"  
+
+  pPerformanceMode:
+    Type: String
+    Description: Performance Mode for filesystem Resource
+    AllowedValues:
+      - "generalPurpose"
+      - "maxIO"
+    Default: "generalPurpose" 
+
+# Parameters for Creating EFS Mount Targets via SSM Parameters
+
+  pSubnetZoneA:
+    Description: SSM Parameter for Subnet Zone A
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /vpc/privatesubnet1/id
+
+  pSubnetZoneB:
+    Description: SSM Parameter for Subnet Zone B
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /vpc/privatesubnet2/id
+
+  pSubnetZoneC:
+    Description: SSM Parameter for Subnet Zone B
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /vpc/privatesubnet3/id
+
+  # Parameter for Mount Target Security Group created in MTSecGrp.yml via SSM parameter Store
+  pSecGrpDctm:
+    Description: SSM Parameter for Security Group for Dctm EFS MT
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /efs/crm-dev/mt/dctm/security_group_id
+
+  pSecGrpLogs:
+    Description: SSM Parameter for Security Group for Logs EFS MT
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /efs/crm-dev/mt/logs/security_group_id
+
+Conditions:
+
+# Condition to allow the selection of correct MT Security group (created in MTSecGrp.yml) based
+# on whether the EFS is for dctm or logs etc.
+  
+  cEFSdctm:
+    !Equals [!Ref pEFSType, 'dctm']
+
+  cEFSlogs:
+    !Equals [!Ref pEFSType, 'logs']
+
+Resources:
+
+# File System Resource Creation
+
+  rFileSystemResource:
+    Type: 'AWS::EFS::FileSystem'
+    Properties:
+      BackupPolicy:
+        Status: ENABLED
+      PerformanceMode: !Ref pPerformanceMode
+      ThroughputMode: bursting      
+      Encrypted: True
+      KmsKeyId: !Ref pKMS
+      LifecyclePolicies: 
+        - TransitionToIA: !Ref pLifeCyclePolicy 
+      FileSystemTags: 
+        - Key: Name
+          Value: !Sub "pge-crm-${pEnv}-${pEFSType}-efs"     
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify         
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+      # FileSystemPolicy:
+      #   Version: "2012-10-17"
+      #   Statement:
+      #     - Action:
+      #         - elasticfilesystem:ClientMount
+      #         - elasticfilesystem:ClientWrite
+      #         - elasticfilesystem:ClientRootAccess
+      #       Effect: Allow
+      #       Principal: "*"              
+      #       Resource: "*"    
+
+# Creating Mount Targets for EFS FileSystem.
+  rMountTargetZoneA:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: 
+        Fn::GetAtt: [ rFileSystemResource, FileSystemId ]           
+      SecurityGroups: 
+        - !If [cEFSdctm, !Ref pSecGrpDctm, !Ref 'AWS::NoValue'] 
+        - !If [cEFSlogs, !Ref pSecGrpLogs, !Ref 'AWS::NoValue']            
+      SubnetId: !Ref pSubnetZoneA
+
+  rMountTargetZoneB:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: 
+        Fn::GetAtt: [ rFileSystemResource, FileSystemId ]           
+      SecurityGroups: 
+        - !If [cEFSdctm, !Ref pSecGrpDctm, !Ref 'AWS::NoValue'] 
+        - !If [cEFSlogs, !Ref pSecGrpLogs, !Ref 'AWS::NoValue']            
+      SubnetId: !Ref pSubnetZoneB
+
+  rMountTargetZoneC:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: 
+        Fn::GetAtt: [ rFileSystemResource, FileSystemId ]           
+      SecurityGroups: 
+        - !If [cEFSdctm, !Ref pSecGrpDctm, !Ref 'AWS::NoValue'] 
+        - !If [cEFSlogs, !Ref pSecGrpLogs, !Ref 'AWS::NoValue']        
+      SubnetId: !Ref pSubnetZoneC
+      
+
+
+# Outputs in SSM Parameter Store
+
+  rEFSArnSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/EFS/Crm${pEnv}/${pEFSType}/ARN" 
+      Type: String
+      Value: !GetAtt rFileSystemResource.Arn
+      Description: SSM Parameter storing ARN of File System Resource
+
+  rEFSFileSystemIDSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/EFS/Crm${pEnv}/${pEFSType}/FileSystemID" 
+      Type: String
+      Value: !GetAtt rFileSystemResource.FileSystemId
+      Description: SSM Parameter storing File System ID of File System Resource
+
+Outputs: 
+
+  oEFSFileSytemID:  
+    Description: The EFS File System ID
+    Value: !GetAtt rFileSystemResource.FileSystemId
+    Export:
+      Name: !Sub "${AWS::StackName}-FileSystemID"
+
+  oEFSFileSytemARN:  
+    Description: The EFS File System ARN
+    Value: !GetAtt rFileSystemResource.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ARN"

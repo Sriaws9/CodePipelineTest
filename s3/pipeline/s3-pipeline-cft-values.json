@@ -1,0 +1,11 @@
+[
+    "pGitHubBranch=main",
+    "pS3TemplatePath=s3/s3-cft.yml",
+    "pS3ValuesPath=s3/s3-cft-values.json",
+    "pProjectName=pge-crm",
+    "pResourceName=s3",
+    "pBuildSpecFile=s3/pipeline/buildspec/s3-buildspec.yml",
+    "pNotifyStatusSNSARN=/general/CodePipeline/SNSTopic/Status",
+    "pApprovalSNS=/general/CodePipeline/SNSTopic/Approval",
+    "pPipelineArtifactsBucket=pge-crm-dev-s3-codepipeline-artifacts"
+  ]

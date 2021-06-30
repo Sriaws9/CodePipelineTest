@@ -1,0 +1,5 @@
+[
+    "pS3BucketName=pge-crm-dev-s3-codepipeline-artifacts",
+    "pVersioning=false",
+    "pKMSMasterKeyID=/KMS/Key/Crmdev/all/Alias/ARN"    
+]

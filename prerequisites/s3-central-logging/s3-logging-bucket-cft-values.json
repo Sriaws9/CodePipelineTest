@@ -1,0 +1,5 @@
+
+[
+    "pS3BucketName=pge-crm-dev-s3-central-logging",
+    "pVersioning=false"    
+]

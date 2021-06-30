@@ -1,0 +1,15 @@
+[   
+    "pGitHubBranch=main",
+    "pEnv=dev",
+    "pTemplatePath=rds/SSM-param-buildspec",
+    "pValuesPath=param-store/rds-cft-values.json",
+
+    "pProjectName=pge-crm",
+    "pResourceName=paramstore",
+    "pEncryptionKeyArn=/KMS/Key/Crmdev/all/ARN",    
+    "pBuildSpecFile=rds/pipeline/buildspec/rds-buildspec.yml",
+
+    "pNotifyStatusSNSARN=/general/CodePipeline/SNSTopic/Status",
+    "pApprovalSNS=/general/CodePipeline/SNSTopic/Approval",
+    "pPipelineArtifactsBucket=pge-crm-dev-s3-codepipeline-artifacts"
+ ]

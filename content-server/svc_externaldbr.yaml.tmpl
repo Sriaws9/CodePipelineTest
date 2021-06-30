@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: dbr-externalsvc
+  name: dbr-externalsvc
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/inbound-cidrs: 192.168.0.0/16,10.0.0.0/8,172.0.0.0/16,172.16.0.0/16,172.24.0.0/16,172.25.0.0/16,172.30.0.0/16
+    alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=$ALB_LOG_S3_BUCKET,access_logs.s3.prefix=pge-crm-$ENVIRONMENT_NAME-dcs-externaldbr
+spec:    
+  ports:
+  - name: dbrnative
+    nodePort: 30523
+    port: 80
+    protocol: TCP
+    targetPort: 1491
+  - name: dbrssl
+    nodePort: 30524
+    port: 81
+    protocol: TCP
+    targetPort: 1492
+  selector:
+    app: dbr
+  sessionAffinity: None
+  type: LoadBalancer

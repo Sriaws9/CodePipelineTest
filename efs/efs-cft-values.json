@@ -1,0 +1,11 @@
+[   
+    "pEFSType=dctm",
+    "pEnv=tst",
+    "pAWSEnv=TST",       
+    "pKMS=/KMS/Key/Crmdev/all/Alias/ARN",
+    "pLifeCyclePolicy=AFTER_14_DAYS",    
+    "pPerformanceMode=generalPurpose",
+    "pSecGrpDctm=/efs/crm-tst/mt/dctm/security_group_id",
+    "pSecGrpLogs=/efs/crm-tst/mt/logs/security_group_id"
+]  
+    

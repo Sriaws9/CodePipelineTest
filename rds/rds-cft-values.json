@@ -1,0 +1,14 @@
+[
+  "pEnv=tst",
+  "pAWSEnv=TST",
+  "pRDSSecurityGroup=/aurora/crmtst/SecurityGroup",
+  "pKmsKeyId=/KMS/Key/Crmdev/all/Alias/ARN",
+  "pEncryptionKeyArn=/KMS/Key/Crmdev/all/ARN",  
+  "pDBBackupRetentionPeriod=7",
+  "pEnableDataApi=true",
+  "pAutoPause=true",
+  "pMinCapacity=8",
+  "pMaxCapacity=384",
+  "pSecondsUntilAutoPause=300",
+  "pEngineVersion=10.14"
+]

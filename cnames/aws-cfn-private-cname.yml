@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+
+###
+### Template: aws-cfn-r53-cname.yaml
+### Author:  Billy Glenn
+### Initial Coding / Adaptation: 2020-06-08
+### Latest Update:  2020-06-11
+###
+### Purpose:  This template instantiates a custom resource which
+###           uses a ServiceToken to create a route53 CNAME record
+###           pointing the FQDN of target application / website
+###           to the associated Load Balancer or  Cloudfront Distribution
+###           as a discrete / independent function.
+###
+### Note:     This template doesn't deal with any 'tag-able' resources - so
+###           collection of Tag values commented out.
+###
+###
+
+### Metadata
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+
+      -
+        Label:
+          default: "CNAME Details"
+        Parameters:
+          - pAlias
+          - pTargetResource
+          - pPrivateHostedZoneId
+          #- pDistributionDomainName
+          - pCrossAccountServiceTokenARN
+
+      # -
+        # Label:
+        #   default: "Tag Details"
+        # Parameters:
+        #   - pApplicationName
+        #   - pAppID
+        #   - pEnv
+        #   - pCFNOwnerTag
+
+    ParameterLabels:
+
+      pAlias:
+        default: "Fully-Qualified Domain Name for Desired CNAME (alias)"
+      pTargetResource:
+        default: "FQDN for the target resource (ALB, Cloudfront Ditribution)"     
+      pPrivateHostedZoneId:
+        default: "Route 53 Private Hosted Zone ID for the target sub-domain"
+      pCrossAccountServiceTokenARN:
+        default: "ServiceToken ARN for Route 53 updates in central account"
+
+      # pApplicationName:
+      #   default: "Application Name"
+      # pAppID:
+      #   default: "AppID (from AMPS) in format APP-####"
+      # pEnv:
+      #   default: "Environment"
+      # pCFNOwnerTag:
+      #   default: "CorpID of resource owner"
+
+### Parameters
+Parameters:
+
+  #Website Details
+  pAlias:
+    Type: 'String'
+    Description: "The Fully-Qualified Domain Name for the Desired CNAME (alias)"
+    Default: "myapp.nonprod.pge.com"
+  pTargetResource:
+    Type: 'String'
+    Description: "The Load Balancer or Cloudfront Distribution Domain Name"
+    Default: "myalb-123456789.us-west-2.elb.amazonaws.com"
+  # pWebsiteDomainName:
+  #   Type: 'String'
+  #   Description: "The Domain Name SUFFIX - e.g. ss-dev.pge.com"
+  pPrivateHostedZoneId:
+    Type: 'String'
+    Description: "The Route 53 Private Hosted Zone ID containing the target sub-domain (e.g. ss.pge.com) "
+    Default: "Z1PO7XO596QKJW"
+  # pPublicHostedZoneId:
+  #   Type: 'String'
+  #   Description: "The Route 53 Public Hosted Zone ID containing the target sub-domain (e.g. nonprod.pge.com) "
+  pCrossAccountServiceTokenARN:
+    Type: 'String'
+    Description: "ServiceToken ARN for Route 53 updates in central account"
+    Default: "arn:aws:sns:us-east-1:514712703977:RequestRoute53CNAME"
+
+  # #Tag Details
+  # pCFNOwnerTag:
+  #   Type: 'String'
+  #   Description: "The owner of this stack (for tagging of resources)"
+  # pEnv:
+  #   Type: 'String'
+  #   Description: "The environment: Dev, Test, QA, Prod"
+  # pApplicationName:
+  #   Type: 'String'
+  #   Description: "The 'friendly' name of the application"
+  # pAppID:
+  #   Type: 'String'
+  #   Description: "AMPS ApplicationID"
+
+
+
+Resources:
+
+# Custom Resource for Cross-Account Record Creation via SNS and Lambda in central account
+  Route53CNAMERecord:
+    Type: Custom::CNAME
+    Properties:
+      ServiceToken: !Ref pCrossAccountServiceTokenARN
+      Source: !Ref pAlias
+      Target: !Ref pTargetResource
+      PrivateHostedZone: !Ref pPrivateHostedZoneId
+
+Outputs:
+  Alias:
+    Description: "The FQDN of the created CNAME (alias)"
+    Value: !Ref pAlias
+
+  Target:
+    Description:  "Target Load Balancer, Cloudfront Distribution, etc"
+    Value: !Ref pTargetResource
+
+  PrivateHostedZone:
+    Description: "Route 53 Private Hosted Zone for internal resolution"
+    Value: !Ref pPrivateHostedZoneId

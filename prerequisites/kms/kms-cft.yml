@@ -1,0 +1,193 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CFT for KMS Key
+
+Parameters:
+
+# Parameters for KMS Key Creation via SSM Parameters
+
+  pKMSRole:
+    Description: SSM Parameter for IAM Role for Key Administration
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /KMS/Key/CrmDev/AdminUserRole
+  
+  
+# Parameters for KMS Key & Alias Naming via runtime values KMS_Values.json
+
+  pEnv:    
+    Type: String
+    Default: "dev"
+    Description: Environment for Deployment
+
+  pComponent:
+    Type: String
+    Default: "all"
+    Description: Component for KMS Key usage
+
+# SSM Parameter For Tags
+
+  pAppID:
+    Description: SSM Parameter for AppID
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/appid
+
+  pEnvironment:
+    Description: SSM Parameter for Environment
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/environment
+
+  pOwner:
+    Description: SSM Parameter for Owner
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/owner
+
+  pCompliance:
+    Description: SSM Parameter for Compliance
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/Compliance
+
+  pNotify:
+    Description: SSM Parameter for Notification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/notify
+
+  pDataClassification:
+    Description: SSM Parameter for Data Classification
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/DataClassification
+
+  pCRIS:
+    Description: SSM Parameter for CRIS
+    Type : 'AWS::SSM::Parameter::Value<String>'
+    Default: /general/CRIS
+
+Resources:
+  rKMSKeyRotatingSymetric:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: Symetric Rotating Key for DEV AWS Account
+      Enabled: true
+      KeySpec: SYMMETRIC_DEFAULT
+      EnableKeyRotation: true
+      KeyPolicy: 
+        Version: '2012-10-17'     
+        Statement:
+        - Sid: Enable IAM User Permissions
+          Effect: Allow
+          Principal: 
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'          
+          Action: kms:*
+          Resource: '*'
+        - Sid: Allow access for Key Administrator 
+          Effect: Allow
+          Principal:
+            AWS: !Ref pKMSRole
+          Action: 
+              - 'kms:Create*'
+              - 'kms:Describe*'
+              - 'kms:Enable*'
+              - 'kms:List*'
+              - 'kms:Put*'
+              - 'kms:Update*'
+              - 'kms:Revoke*'
+              - 'kms:Disable*'
+              - 'kms:Get*'
+              - 'kms:Delete*'
+              - 'kms:TagResource'
+              - 'kms:UntagResource'
+              - 'kms:ScheduleKeyDeletion'
+              - 'kms:CancelKeyDeletion'
+          Resource: '*'
+        - Sid: Allow use of the key
+          Effect: Allow
+          Principal:
+            AWS: !Ref pKMSRole
+          Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+          Resource: '*'
+        - Sid: Allow attachment of persistent resources
+          Effect: Allow
+          Principal:
+            AWS: !Ref pKMSRole
+          Action:
+              - 'kms:CreateGrant'
+              - 'kms:ListGrants'
+              - 'kms:RevokeGrant'
+          Resource: '*'
+          Condition:
+            Bool:
+              'kms:GrantIsForAWSResource': 'true'
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      Tags: 
+        - Key: AppID
+          Value: !Ref pAppID
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: Owner
+          Value: !Ref pOwner
+        - Key: Compliance
+          Value: !Ref pCompliance
+        - Key: Notify
+          Value: !Ref pNotify         
+        - Key: DataClassification
+          Value: !Ref pDataClassification
+        - Key: CRIS
+          Value: !Ref pCRIS
+
+# Create Alias For KMS Key
+  rKMSAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/pge-crm-${pEnv}-${pComponent}"
+      TargetKeyId: !Ref rKMSKeyRotatingSymetric
+
+# Create Key Alias ARN as Parameter in Parameter Store
+  rKMSSSMParameterKeyAliasARN:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/KMS/Key/Crm${pEnv}/${pComponent}/Alias/ARN" 
+      Type: String
+      Value: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/pge-crm-${pEnv}-${pComponent}'
+      Description: SSM Parameter for KMS KeyId.
+    DependsOn:
+      -  rKMSAlias
+
+  rKMSSSMParameterKeyAlias:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/KMS/Key/Crm${pEnv}/${pComponent}/Alias" 
+      Type: String
+      Value: !Sub "alias/pge-crm-${pEnv}-${pComponent}"
+      Description: SSM Parameter for KMS KeyId.
+    DependsOn:
+      -  rKMSAlias
+
+  rKMSSSMParameterKeyArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/KMS/Key/Crm${pEnv}/${pComponent}/ARN" 
+      Type: String
+      Value: !GetAtt rKMSKeyRotatingSymetric.Arn
+      Description: SSM Parameter for KMS KeyId.
+    DependsOn:
+      -  rKMSAlias
+      
+        
+# Outputs for KMS Key Alias and AliasARN
+Outputs:
+  KMSAlias:  
+    Description: The ID of the KMS Key
+    Value: !Sub "pge-crm-${pEnv}-${pComponent}"
+    Export:
+      Name: !Sub "${AWS::StackName}-KMSAlias"
+
+
+  KMSAliasARN:  
+    Description: The Alias of the KMS Key
+    Value: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:pge-crm-${pEnv}-${pComponent}"
+    Export:
+      Name: !Sub "${AWS::StackName}-KMSAliasARN"
