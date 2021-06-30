@@ -23,7 +23,7 @@ phases:
       - echo $BUCKET_NAME
       - export EVN=$(cat $S3_CF_TEMPLATE_VALUES | jq .[1] | jq 'split("=")' | jq -r .[1])
       - echo $EVN
-      - CROSS_ACT_ROLE
+      - echo $CROSS_ACT_ROLE
       - |
         if [[ "$EVN" == "QA" ]]
         then
