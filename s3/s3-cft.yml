@@ -31,6 +31,9 @@ Parameters:
     Description: SSM Parameter for Owner
     Type : 'AWS::SSM::Parameter::Value<String>'
     Default: /general/owner
+  pECMRole:
+    Description: Enter the Role ECM Role name
+    Type : String    
 
   pCompliance:
     Description: SSM Parameter for Compliance
