@@ -2,9 +2,7 @@ version: 0.2
 phases:
   pre_build:
     - echo "Nothing in the prebuild"
-
   build:
-    - echo "Nothing in the build"
-   
+    - echo "Nothing in the build"   
   post_build:
     - echo "Nothing in the post build"
