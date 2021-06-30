@@ -2,6 +2,7 @@
    "pS3BucketName=pge-crm-s3-dctm-qa-1", 
    "pAWSEnv=QA", 
    "pVersioning=false",     
-   "pKMSMasterKeyID=/KMS/Key/Crmqa/all/Alias/ARN" 
-  ]
+   "pKMSMasterKeyID=/KMS/Key/Crmqa/all/Alias/ARN",
+   "pECMRole=ECM_Admin"
+ ]
 
