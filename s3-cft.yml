@@ -10,7 +10,7 @@ Resources:
     Properties:
         BucketName: !Ref pS3bktName
         VersioningConfiguration:
-          Status: Enabled
+          Status: Suspended
         Tags: 
           - Key: "Env1"
             Value: "dev"
