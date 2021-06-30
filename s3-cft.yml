@@ -1,7 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
     pS3bktName:
-        Type: String    
+        Type: String
+        Description: Name of the bucket
 Resources:
   S3Bucket:
     Type: 'AWS::S3::Bucket'
