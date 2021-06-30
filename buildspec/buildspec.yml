@@ -1,9 +1,5 @@
 version: 0.2
 phases:
-  install:    
-    commands:
-      - yum install python   
-
   pre_build:
     - echo "Nothing in the prebuild"
 
