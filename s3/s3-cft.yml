@@ -163,7 +163,7 @@ Resources:
             Principal:
               AWS:
               - !Sub arn:aws:iam::${AWS::AccountId}:root
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/ECM_Ops
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${pECMRole}'
           - Sid: "ObjectLevelAccess"
             Action:
               - s3:AbortMultipartUpload
@@ -180,7 +180,7 @@ Resources:
             Principal:
               AWS:            
               - !Sub arn:aws:iam::${AWS::AccountId}:root
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/ECM_Ops
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${pECMRole}'
 
           - Sid: "Deny Non Http Traffic"
             Action:
