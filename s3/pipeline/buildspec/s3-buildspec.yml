@@ -33,17 +33,10 @@ phases:
           export AWS_EXPIRATION=$(echo ${CREDENTIALS} | jq -r '.Credentials.Expiration')
         
           echo "verifying the profile"      
-          aws sts get-caller-identity
-      - echo "update kube config to connect with cluster"
-        fi
-        
-         #Add the dev to the bucket name of the bucket name
-        
-       #- chmod 775 scripts/create_update_stack.sh
-       #Update the bucket name with env
-       
+          aws sts get-caller-identity     
+        fi      
 
-       - aws cloudformation deploy --stack-name  ${BUCKET_NAME}-stack --template-file $S3_CF_TEMPLATE --parameter-overrides file://$S3_CF_TEMPLATE_VALUES --tags file://$CF_TAGS_FILE_PATH     
+      - aws cloudformation deploy --stack-name  ${BUCKET_NAME}-stack --template-file $S3_CF_TEMPLATE --parameter-overrides file://$S3_CF_TEMPLATE_VALUES --tags file://$CF_TAGS_FILE_PATH     
        #- ./scripts/create_update_stack.sh ${BUCKET_NAME}-Stack $S3_CF_TEMPLATE $S3_CF_TEMPLATE_VALUES
     
   post_build:
