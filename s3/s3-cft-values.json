@@ -3,6 +3,6 @@
    "pAWSEnv=DEV", 
    "pVersioning=false",     
    "pKMSMasterKeyID=/KMS/Key/Crmdev/all/Alias/ARN",
-   "pECMRole=ECM_Admin"
+   "pECMRole=ECM_Ops"
  ]
 
