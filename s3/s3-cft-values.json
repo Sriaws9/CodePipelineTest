@@ -1,8 +1,8 @@
  [
-   "pS3BucketName=mn100-s3-dev", 
-   "pAWSEnv=DEV", 
+   "pS3BucketName=mn100-s3-qa-1", 
+   "pAWSEnv=QA", 
    "pVersioning=false",     
-   "pKMSMasterKeyID=/KMS/Key/Crmdev/all/Alias/ARN",
-   "pECMRole=ECM_Ops"
+   "pKMSMasterKeyID=/KMS/Key/Crmqa/all/Alias/ARN",
+   "pECMRole=ECM_Admin"
  ]
 
