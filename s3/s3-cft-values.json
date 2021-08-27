@@ -1,5 +1,5 @@
  [
-   "pS3BucketName=mn100-s3-qa-1", 
+   "pS3BucketName=mn100-s3-qa-2", 
    "pAWSEnv=QA", 
    "pVersioning=false",     
    "pKMSMasterKeyID=/KMS/Key/Crmqa/all/Alias/ARN",
